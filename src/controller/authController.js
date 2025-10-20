@@ -1,14 +1,7 @@
 const { registerUserService, loginUserService, getAllUsersService } = require("../model/authModel");
 const jwt = require('jsonwebtoken');
-
+const handleResponse = require('../utils/handleResponse');
 // Handle API responses
-const handleResponse = (res, status, message, data = null) => {
-  res.status(status).json({
-    status,
-    message,
-    data
-  })
-};
 
 const getAllUsers = async (req, res, next) => {
   try {
@@ -26,10 +19,10 @@ const getAllUsers = async (req, res, next) => {
 
 // Register a new user
 const registerUser = async (req, res, next) => {
-  const { name, email, password, role} = req.body;
+  const { name, email, password} = req.body;
 
   try {
-    const newUser = await registerUserService(name, email, password, role);
+    const newUser = await registerUserService(name, email, password);
 
     if(!newUser) handleResponse(res, 400, 'User registration failed');
 
@@ -65,7 +58,6 @@ const loginUser = async (req, res, next) => {
       process.env.JWT_SECRET, 
       { expiresIn: '1h' }
     );
-
     return handleResponse(res, 200, 'Login successful', 
       { user: loggedInUser, 
         token 

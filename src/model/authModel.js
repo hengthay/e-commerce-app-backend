@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 // Get all user by Admin
 const getAllUsersService = async () => {
   try {
-    const result = await pool.query('SELECT id, name, email, role, created_at, updated_at FROM users');
+    const result = await pool.query('SELECT id, name, email, role, created_at, updated_at FROM users ORDER BY id');
 
     return result.rows;
   } catch (error) {
@@ -14,7 +14,7 @@ const getAllUsersService = async () => {
 }
 
 // Register user
-const registerUserService = async (name, email, password, role) => {
+const registerUserService = async (name, email, password) => {
   try {
     // Check if user exists by email
     const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
@@ -29,9 +29,9 @@ const registerUserService = async (name, email, password, role) => {
     // Insert new user into database
     const insertResult = await pool.query(
       `
-        INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING *
+        INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *
       `, 
-      [name, email, hashedPassword, role]
+      [name, email, hashedPassword]
     );
     
     return insertResult.rows[0];
