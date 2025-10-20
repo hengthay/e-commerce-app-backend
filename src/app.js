@@ -11,6 +11,9 @@ const createOrdersTable = require('./data/createOrdersTable');
 const createOrderItemsTable = require('./data/createOrderItemsTable');
 const createCategoriesTable = require('./data/createCategoriesTable');
 const createProductTable = require('./data/createProductTable');
+const authRoutes = require('./routes/authRoutes');
+const errorHandler = require('./middlewares/errorHandling');
+const authenticateToken = require('./middlewares/authenticateToken');
 
 // Middleware and route setups would go here
 app.use(express.json());
@@ -19,10 +22,21 @@ app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
 
-app.get('/', (req, res) => {
-  res.send('Hello World!');
-});
+// Handle errors globally
+app.use(errorHandler);
 
+// Routes API endpoints would be defined here
+app.use('/api/auth', authRoutes);
+
+
+// Dashboard route
+app.get('/', authenticateToken, (req, res) => {
+  console.log(req.user);
+  res.json({
+    message: "Welcome to E-Commerce-App",
+    user: req.user
+  })
+})
 // Create necessary tables in PostgreSQL database
 // createUserTable();
 // createAddressesTable();
