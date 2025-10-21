@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const handleResponse = require('../utils/handleResponse');
 // Handle API responses
 
-const getAllUsers = async (req, res, next) => {
+const getAllAuthUsers = async (req, res, next) => {
   try {
     const users = await getAllUsersService();
     console.log('Users----------', users);
@@ -45,7 +45,7 @@ const loginUser = async (req, res, next) => {
 
   try {
     const loggedInUser = await loginUserService(email, password);
-
+    console.log('User role: ',loggedInUser.role);
     if(!loggedInUser) return handleResponse(res, 400, 'Login failed');
 
     // Sign JWT Token
@@ -71,7 +71,7 @@ const loginUser = async (req, res, next) => {
 
 module.exports = {
   handleResponse,
-  getAllUsers,
+  getAllAuthUsers,
   registerUser,
   loginUser
 }

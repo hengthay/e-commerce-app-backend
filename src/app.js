@@ -13,6 +13,7 @@ const createCategoriesTable = require('./data/createCategoriesTable');
 const createProductTable = require('./data/createProductTable');
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
+const userRoutes = require('./routes/userRoutes');
 const errorHandler = require('./middlewares/errorHandling');
 const authenticateToken = require('./middlewares/authenticateToken');
 
@@ -29,6 +30,7 @@ app.use(errorHandler);
 // Routes API endpoints would be defined here
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/users', userRoutes);
 
 // Dashboard route
 app.get('/', authenticateToken, (req, res) => {
