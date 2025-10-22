@@ -5,7 +5,7 @@ const createCartsTable = async () => {
     CREATE TABLE IF NOT EXISTS carts (
       id SERIAL PRIMARY KEY,
       user_id INT REFERENCES users(id),
-      is_active BOOLEAN,
+      is_active BOOLEAN DEFAULT TRUE,
       created_at TIMESTAMP DEFAULT NOW()
     )`
   ;
