@@ -62,6 +62,7 @@ const addProductToCartService = async (userId, productId, quantity) => {
     if(!productId || !quantity || quantity <= 0) {
       throw new Error("Product ID or quantity is missing or invalid (must be > 0)");
     }
+
     // If userId is not received
     if(!userId) throw new Error("User ID is not received");
     
@@ -121,8 +122,59 @@ const addProductToCartService = async (userId, productId, quantity) => {
   };
 }
 
+// Implement on update cart item quantity
+const updateCartItemQuantityService = async (userId, productId, newQuantity) => {
+  // Get a client from pool
+  const client = await pool.connect();
+  try {
+    // Check the received data from user
+    console.log(`User ID: ${userId}, Product ID: ${productId}, Quantity: ${newQuantity}`);
+    // Validate the received data
+    if(!productId || !newQuantity || newQuantity <= 0) {
+      throw new Error("Product ID or quantity is missing or invalid (must be > 0)");
+    }
 
+    // If userId is not received
+    if(!userId) throw new Error("User ID is not received");
+
+    // Begin the transaction
+    await client.query('BEGIN');
+
+    const cartResult = await client.query('SELECT * FROM carts WHERE user_id = $1', [userId]);
+
+    if(cartResult.rows.length === 0) {
+      throw new Error(`Cart for user ID ${userId} not found`);
+    }
+
+    const cartId = cartResult.rows[0].id;
+
+    const updateResult = await client.query(
+      `
+        UPDATE cart_items
+        SET quantity = $1
+        WHERE cart_id = $2 AND product_id = $3
+      `,
+      [newQuantity, cartId, productId]
+    );
+
+    if(updateResult.rowCount === 0) {
+      throw new Error(`Cart item with product ID ${productId} not found in cart ID ${cartId}`);
+    }
+
+    // Commit the transaction.
+    await client.query('COMMIT');
+
+    return {userId, productId, newQuantity};
+  } catch (error) {
+    console.log('Error to updating cart: ', error.stack);
+    throw error;
+  } finally {
+    // Always release client
+    client.release();
+  }
+};
 module.exports = {
   getCartsByUserIdService,
-  addProductToCartService
+  addProductToCartService,
+  updateCartItemQuantityService
 };
