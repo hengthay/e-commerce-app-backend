@@ -63,7 +63,7 @@ const addProductToCartService = async (userId, productId, quantity) => {
       throw new Error("Product ID or quantity is missing or invalid (must be > 0)");
     }
 
-    // If userId is not received
+    // If userId is not rec eived
     if(!userId) throw new Error("User ID is not received");
     
     // Begin the transaction
@@ -147,11 +147,13 @@ const updateCartItemQuantityService = async (userId, productId, newQuantity) => 
     }
 
     const cartId = cartResult.rows[0].id;
-
+    if(newQuantity >= 100) {
+      throw new Error('Quantity cannot be higher than 100, range available (1-100)');
+    }
     const updateResult = await client.query(
       `
         UPDATE cart_items
-        SET quantity = $1
+        SET quantity = quantity + $1
         WHERE cart_id = $2 AND product_id = $3
       `,
       [newQuantity, cartId, productId]
@@ -173,8 +175,93 @@ const updateCartItemQuantityService = async (userId, productId, newQuantity) => 
     client.release();
   }
 };
+
+// Implement on Remove cart item quantity
+const removeCartItemQuantityService = async (userId, productId, quantityToRemove) => {
+  const client = await pool.connect();
+  try {
+    
+    console.log(`User ID: ${userId}, Product ID: ${productId} and removeQuantity: ${quantityToRemove}`);
+
+    // Validate the received data
+    if(!productId || !quantityToRemove || quantityToRemove <= 0) {
+      throw new Error("Product ID or quantity to remove is missing or invalid (must be > 0)");
+    }
+
+    // If userId is not received
+    if(!userId) throw new Error("User ID is not received");
+
+    // Begin the transaction
+    await client.query('BEGIN');
+
+    const cartResult = await client.query('SELECT * FROM carts WHERE user_id = $1', [userId]);
+
+    if(cartResult.rows.length === 0) {
+      throw new Error(`Cart for user ID ${userId} not found`);
+    }
+
+    const cartId = cartResult.rows[0].id;
+    console.log('Cart ID: ', cartId);
+
+    const existingItemResult = await client.query(
+      'SELECT * FROM cart_items WHERE cart_id = $1 AND product_id = $2',
+      [cartId, productId]
+    );
+
+    if(existingItemResult.rows.length === 0) {
+      throw new Error(`Cart item with product ID ${productId} not found in cart ID ${cartId}`);
+    }
+
+    const currentQuantity = existingItemResult.rows[0].quantity;
+
+    console.log('Current Cart Quantity: ', currentQuantity);
+
+    // Check if the current quantity is sufficient to remove
+    if (currentQuantity < quantityToRemove) {
+      throw new Error("Not enough quantity to remove");
+    }
+ 
+    await client.query(
+      `
+      UPDATE cart_items
+      SET quantity = quantity - $1
+      WHERE cart_id = $2 AND product_id = $3
+    `,
+    [quantityToRemove, cartId, productId]
+    );
+
+    if(currentQuantity - quantityToRemove === 0) {
+      await client.query(
+        `
+        DELETE FROM cart_items
+        WHERE cart_id = $1 AND product_id = $2
+      `,
+      [cartId, productId]
+      )
+    };
+
+    // Commit the transaction.
+    await client.query('COMMIT');
+
+    return {userId, productId, quantityRemoved: quantityToRemove};
+  } catch (error) {
+    console.log('Error to remove cart quantity: ', error.stack);
+    throw error;
+  } finally {
+    // Always release client
+    client.release();
+  }
+};
+
+// Delete cart item by item ID
+const deleteCartItemByIdService = async (userId, productId) => {
+
+}
+
 module.exports = {
   getCartsByUserIdService,
   addProductToCartService,
-  updateCartItemQuantityService
+  updateCartItemQuantityService,
+  removeCartItemQuantityService,
+  deleteCartItemByIdService
 };

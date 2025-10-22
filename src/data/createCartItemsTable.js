@@ -6,7 +6,7 @@ const createCartItemsTable = async () => {
       id SERIAL PRIMARY KEY,
       cart_id INT REFERENCES carts(id),
       product_id INT REFERENCES products(id),
-      quantity INT NOT NULL CHECK (quantity > 0),
+      quantity INT NOT NULL,
       created_at TIMESTAMP DEFAULT NOW()
     )`
   ;

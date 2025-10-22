@@ -1,4 +1,4 @@
-const { getCartsByUserIdService, addProductToCartService, updateCartItemQuantityService } = require('../model/cartModel');
+const { getCartsByUserIdService, addProductToCartService, updateCartItemQuantityService, removeCartItemQuantityService } = require('../model/cartModel');
 const handleResponse = require('../utils/handleResponse');
 
 // Get cart by userId that received from jwt token.
@@ -50,23 +50,23 @@ const addProductToCart = async (req, res, next) => {
     next(error);
   }
 }
-
+// Performance update cart item quantity
 const updateCartItemQuantity = async (req, res, next) => {
   try {
     // Get user ID from token
     const userId = req.user.id;
-    // Get product_id from req.params
-    const product_id = req.params.productId;
+    // Get productId from req.params
+    const product_id = parseInt(req.params.productId, 10);
     // Get the data such and newQuantity from request body
     const { newQuantity } = req.body;
+    const newQuantityParsed = parseInt(newQuantity, 10)
+    console.log(`User ID: ${userId}, Product ID: ${product_id} and New Quantity: ${newQuantityParsed} is received for update quantity`);
 
-    console.log(`Product ID: ${product_id} and New Quantity: ${newQuantity} is received for update`);
-
-    if(!Number.isInteger(product_id) || !Number.isInteger(newQuantity) || !Number.isInteger(userId)) {
-      return handleResponse(res, 400, 'User ID, Product ID, and Quantity must be valid numbers');
+    if(!Number.isInteger(product_id) || !Number.isInteger(newQuantityParsed) || !Number.isInteger(userId)) {
+      return handleResponse(res, 400, 'User ID, Product ID, and Quantity must be valid numbers for update cart items');
     }
 
-    const updatedCartItem = await updateCartItemQuantityService(Number(userId), Number(product_id), Number(newQuantity));
+    const updatedCartItem = await updateCartItemQuantityService(Number(userId), product_id, newQuantityParsed);
 
     if(!updatedCartItem) return handleResponse(res, 400, 'Cart item quantity is unable to be updated');
 
@@ -77,8 +77,39 @@ const updateCartItemQuantity = async (req, res, next) => {
     next(error);
   }
 }
+// Performance to remove cart item quantity
+const removeCartItemQuantity = async (req, res, next) => {
+  try {
+    // Get user ID from token
+    const userId = req.user.id;
+    // Get productId from req.params
+    const product_id = parseInt(req.params.productId, 10);
+    // Get the quantity for remove
+    const { quantityToRemove } = req.body;
+    const quantityToRemoveParsed = parseInt(quantityToRemove, 10);
+
+    console.log(`User ID: ${userId}, Product ID: ${product_id} and Quantity To Remove: ${quantityToRemoveParsed} is received from remove cart quantity`);
+
+    if(!Number.isInteger(product_id) || !Number.isInteger(quantityToRemoveParsed) || !Number.isInteger(userId)) {
+      return handleResponse(res, 400, 'User ID, Product ID, and Quantity must be valid numbers for remove cart items');
+    }
+
+    const removedCartItem = await removeCartItemQuantityService(Number(userId), product_id, quantityToRemoveParsed);
+
+    if(!removedCartItem) return handleResponse(res, 404, 'Cart item is removing not successful');
+
+    console.log('Cart is removed successful------', removedCartItem);
+
+    return handleResponse(res, 200, 'Cart item quantity is successfully removed');
+  } catch (error) {
+    console.log('Unable to remove cart and quantity: ', error.stack);
+    next(error);
+  }
+};
+
 module.exports = {
   getCartsByUserId,
   addProductToCart,
-  updateCartItemQuantity
+  updateCartItemQuantity,
+  removeCartItemQuantity
 };

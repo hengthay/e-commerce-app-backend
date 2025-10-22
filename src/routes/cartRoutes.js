@@ -1,5 +1,5 @@
 const express = require('express');
-const { getCartsByUserId, addProductToCart, updateCartItemQuantity } = require('../controller/cartController');
+const { getCartsByUserId, addProductToCart, updateCartItemQuantity, removeCartItemQuantity } = require('../controller/cartController');
 const authenticateToken = require('../middlewares/authenticateToken');
 const authorizeRoles = require('../middlewares/authorizeRoles');
 
@@ -11,8 +11,6 @@ router.post('/add', authenticateToken, authorizeRoles('user', 'admin'), addProdu
 
 router.put('/update/:productId', authenticateToken, authorizeRoles('user', 'admin'), updateCartItemQuantity)
 
-router.delete('/remove/:itemId', (req, res) => {
-  res.send(`Remove cart item with ID: ${req.params.itemId}`);
-});
+router.delete('/remove/:productId', authenticateToken, authorizeRoles('user', 'admin'), removeCartItemQuantity);
 
 module.exports = router;
