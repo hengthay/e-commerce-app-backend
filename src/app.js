@@ -14,7 +14,8 @@ const createProductTable = require('./data/createProductTable');
 const authRoutes = require('./routes/authRoutes');
 const productRoutes = require('./routes/productRoutes');
 const userRoutes = require('./routes/userRoutes');
-const cartRoutes = require('./routes/cartRoutes')
+const cartRoutes = require('./routes/cartRoutes');
+const orderRoutes = require('./routes/orderRoutes');
 const errorHandler = require('./middlewares/errorHandling');
 const authenticateToken = require('./middlewares/authenticateToken');
 
@@ -33,7 +34,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/cart', cartRoutes);
-
+app.use('/api/orders', orderRoutes);
 // Dashboard route
 app.get('/', authenticateToken, (req, res) => {
   console.log(req.user);

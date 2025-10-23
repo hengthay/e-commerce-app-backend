@@ -11,7 +11,7 @@ router.post('/add', authenticateToken, authorizeRoles('user', 'admin'), addProdu
 
 router.put('/update/:productId', authenticateToken, authorizeRoles('user', 'admin'), updateCartItemQuantity)
 
-router.delete('/remove/:productId', authenticateToken, authorizeRoles('user', 'admin'), removeCartItemQuantity);
+router.put('/remove/:productId', authenticateToken, authorizeRoles('user', 'admin'), removeCartItemQuantity);
 
 router.delete('/delete/:productId', authenticateToken, authorizeRoles('user', 'admin'), deleteItemInCartById);
 
