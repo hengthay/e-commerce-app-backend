@@ -1,5 +1,5 @@
 const handleResponse = require('../utils/handleResponse');
-const { getAllOrdersService, getOrdersByUserIdService } = require('../model/orderModel');
+const { getAllOrdersService, getOrdersByUserIdService, placeOrderService } = require('../model/orderModel');
 
 // Get all orders (admin only)
 const getAllOrders = async (req, res, next) => {
@@ -59,7 +59,38 @@ const getOrdersByUserId = async (req, res, next) => {
     next(error);
   }
 }
+
+// Implement on place order
+const placeOrder = async (req, res, next) => {
+  try {
+    // Get userId from token to verify admin role
+    const userId = req.user.id;
+    console.log('Normal User ID: ', userId);
+
+    // Validate userId
+    if(!Number.isInteger(userId) || userId <= 0) {
+      return handleResponse(res, 400, 'Invalid userId. It must be a positive integer.');
+    }
+    // Call service to place order
+    const placedOrder = await placeOrderService(userId);
+
+    // Check if order is placed successfully
+    if(!placedOrder) {
+      return handleResponse(res, 400, 'Unable to place order');
+    }
+    // Return successful response
+    console.log('Order is placed successfully------', placedOrder);
+
+    return handleResponse(res, 201, 'Order is successfully placed', placedOrder);
+  } catch (error) {
+    console.log('Unable to make a place order', error.stack);
+    next(error);
+  }
+};
+
+
 module.exports = {
   getAllOrders,
-  getOrdersByUserId
+  getOrdersByUserId,
+  placeOrder
 };
