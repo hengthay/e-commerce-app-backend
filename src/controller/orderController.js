@@ -66,14 +66,20 @@ const placeOrder = async (req, res, next) => {
     // Get userId from token
     const userId = req.user.id;
     console.log('Normal User ID: ', userId);
+    // Get address of order
+    const { street, city, country, postal_code, phone_number } = req.body;
+    console.log(`Order Information Street:${street}, City-${city}, Country-${country}, Postal-code-${postal_code} and Phone-number-${phone_number}`);
 
     // Validate userId
     if(!Number.isInteger(userId) || userId <= 0) {
       return handleResponse(res, 400, 'Invalid userId. It must be a positive integer.');
     }
-
+    if(!street || !city || !country || !postal_code || !phone_number) {
+      return handleResponse(res, 400, 'Address information is missing. Please provide all information before proceed');
+    }
+    
     // Call service to place order, passing address info
-    const placedOrder = await placeOrderService(userId);
+    const placedOrder = await placeOrderService(userId, street, city, country, postal_code, phone_number);
 
     // Check if order is placed successfully
     if(!placedOrder) {

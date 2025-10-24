@@ -135,11 +135,12 @@ const getOrdersByUserIdService = async (userId) => {
 }
 
 // Implement place order
-// Accepts either `addressId` (existing address belonging to user) or `address` payload
-const placeOrderService = async (userId) => {
+const placeOrderService = async (userId, street, city, country, postal_code, phone_number) => {
   const client = await pool.connect();
   try {
     console.log('User ID in orders: ', userId);
+
+    console.log(`Receive Address of Order St-${street}, City-${city}, Country-${country}, Postal-code-${postal_code} and Phone-number-${phone_number}`)
 
     if(!userId) {
       throw new Error('Invalid userId to make place order');
@@ -148,6 +149,40 @@ const placeOrderService = async (userId) => {
     // BEGIN the transaction
     await client.query('BEGIN');
 
+    // Insert Shipping Address and get ID of it
+    const shippingResult = await client.query(
+      `
+        INSERT INTO addresses (user_id, street, city, country, postal_code, phone_number)
+        VALUES ($1, $2, $3, $4, $5, $6) 
+        RETURNING id
+      `,
+      [userId, street, city, country, postal_code, phone_number]
+    )
+
+    if(shippingResult.rows.length === 0) {
+      throw new Error('Failed to insert address shipping address');
+    };
+
+    // Store shipping_address_id
+    const shippingAddressId = shippingResult.rows[0].id;
+
+    // Insert Billing Address to get ID of it
+    const billingResult = await client.query(
+      `
+        INSERT INTO addresses (user_id, street, city, country, postal_code, phone_number)
+        VALUES ($1, $2, $3, $4, $5, $6) 
+        RETURNING id
+      `,
+      [userId, street, city, country, postal_code, phone_number]
+    )
+
+    if(billingResult.rows.length === 0) {
+      throw new Error('Failed to insert address billing address');
+    };
+
+    // Store shipping_address_id
+    const billingAddressId = billingResult.rows[0].id;
+    
     // 1. Get cart items for the user
     const cartResult = await client.query(
       `
@@ -161,7 +196,7 @@ const placeOrderService = async (userId) => {
           ON c.id = ci.cart_id
         JOIN products as p
           ON ci.product_id = p.id
-        WHERE c.user_id = $1
+        WHERE c.user_id = $1 and c.is_active = TRUE
       `,
       [userId]
     );
@@ -179,11 +214,11 @@ const placeOrderService = async (userId) => {
     // 3. Create a new order
     const orderResult = await client.query(
       `
-        INSERT INTO orders (user_id, total_amount)
-        VALUES ($1, $2)
+        INSERT INTO orders (user_id, total_amount, shipping_address_id, billing_address_id)
+        VALUES ($1, $2, $3, $4)
         RETURNING id
       `,
-      [userId, totalAmount]
+      [userId, totalAmount, shippingAddressId, billingAddressId]
     );
 
     if(orderResult.rows.length === 0) {

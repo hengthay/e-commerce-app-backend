@@ -9,6 +9,8 @@ const createOrdersTable = async () => {
       status VARCHAR(20) NOT NULL DEFAULT 'pending',
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
+      shipping_address_id INT REFERENCES addresses(id) NOT NULL,
+      billing_address_id INT REFERENCES addresses(id) NOT NULL
     )`
   ;
 
