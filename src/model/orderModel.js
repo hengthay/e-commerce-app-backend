@@ -135,6 +135,7 @@ const getOrdersByUserIdService = async (userId) => {
 }
 
 // Implement place order
+// Accepts either `addressId` (existing address belonging to user) or `address` payload
 const placeOrderService = async (userId) => {
   const client = await pool.connect();
   try {
@@ -230,8 +231,58 @@ const placeOrderService = async (userId) => {
 };
 
 
+// Update order status by admin
+const UpdateOrderStatusByAdminService = async (orderId, status) => {
+  const client = await pool.connect();
+
+  try {
+    console.log(`orderId: ${orderId}, and status: ${status} is received for update`);
+
+    if(!orderId || !status) {
+      throw new Error('Invalid orderId or status to update order status');
+    }
+    if(!['pending', 'shipped', 'delivered', 'cancelled'].includes(status)) {
+      throw new Error('Invalid status value. Allowed values are: pending, shipped, delivered, cancelled');
+    }
+    if(!Number.isInteger(orderId) || orderId <= 0) {
+      throw new Error('Invalid orderId. It must be a positive integer.');
+    }
+
+    // BEGIN the transaction
+    await client.query('BEGIN');
+
+    const updateResult = await client.query(
+      `
+        UPDATE orders
+        SET status = $1,
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING id, status
+      `,
+      [status, orderId]
+    );
+    
+    if(updateResult.rows.length === 0) {
+      throw new Error(`Order with ID: ${orderId} not found.`);
+    }
+
+    console.log('Order Status is updated successfully -----', updateResult.rows[0]);
+    
+    // COMMIT transaction
+    await client.query('COMMIT');
+
+    return updateResult.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.log('Error to update order status: ', error.stack);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 module.exports = {
   getAllOrdersService,
   getOrdersByUserIdService,
-  placeOrderService
+  placeOrderService,
+  UpdateOrderStatusByAdminService
 }
