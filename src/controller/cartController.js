@@ -1,4 +1,4 @@
-const { getCartsByUserIdService, addProductToCartService, updateCartItemQuantityService, removeCartItemQuantityService, deleteItemInCartByIdService } = require('../model/cartModel');
+const { getCartsByUserIdService, addProductToCartService, updateCartItemQuantityService, removeCartItemQuantityService, deleteItemInCartByIdService, syncGuestCartService } = require('../model/cartModel');
 const handleResponse = require('../utils/handleResponse');
 
 // Get cart by userId that received from jwt token.
@@ -158,10 +158,38 @@ const deleteItemInCartById = async (req, res, next) => {
     next(error);
   }
 }
+
+// Performance on Sync Guest Items
+const syncGuestCart = async (req, res, next) => {
+  try {
+    // Get the userID from token
+    const userId = req.user.id;
+    // Get guest items from req.body
+    const guestItems = req.body.items || [];
+    
+    if(!guestItems) {
+      return handleResponse(res, 400, 'Not received guestItems from frontend');
+    }
+    const syncCarts = await syncGuestCartService(userId, guestItems);
+
+    if(!syncCarts) {
+      return handleResponse(res, 400, 'Unable to sync guest cart');
+    }
+
+    // Log successful addition
+    console.log('Cart is sync successful--------', syncCarts);
+    // Return successful response
+    return handleResponse(res, 201, 'Product is sync to cart successful', syncCarts);
+  } catch (error) {
+    console.log('Unable to sycn a guest product to cart: ', error.stack);
+    next(error);
+  }
+}
 module.exports = {
   getCartsByUserId,
   addProductToCart,
   updateCartItemQuantity,
   removeCartItemQuantity,
-  deleteItemInCartById
+  deleteItemInCartById,
+  syncGuestCart
 };

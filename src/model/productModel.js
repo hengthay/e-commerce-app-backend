@@ -14,6 +14,36 @@ const getAllProductsService = async () => {
     throw error;
   }
 };
+
+// Get recommended products with only 8 items
+const getRecommendedProductsService = async (type) => {
+  try {
+    const result = await pool.query(
+      `SELECT 
+        p.id,
+        p.title,
+        p.price,
+        p.stock,
+        p.image_url,
+        p.description,
+        c.type
+      FROM products as p
+      JOIN categories as c
+        ON p.category_id = c.id
+      WHERE c.type = $1
+      LIMIT 8`,
+      [type]
+    );
+
+    if(!result.rows) throw new Error('No recommended products found');
+
+    return result.rows;
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    throw error;
+  }
+};
+
 // Get indiviual product by ID
 const getProductByIdService = async (id) => {
   try {
@@ -88,6 +118,7 @@ const deleteProductService = async (id) => {
 
 module.exports = {
   getAllProductsService,
+  getRecommendedProductsService,
   getProductByIdService,
   createProductService,
   updateProductService,

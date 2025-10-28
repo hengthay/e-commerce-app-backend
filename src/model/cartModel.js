@@ -297,6 +297,86 @@ const deleteItemInCartByIdService = async (userId, productId) => {
     console.log(`Error to delete item in cart by id:${productId}`, error.stack);
     throw error;
   }
+};
+
+// Performance on sync Guest Cart Item model
+const syncGuestCartService = async (userId, guestItems) => {
+
+  const client = await pool.connect();
+
+  try {
+    console.log(`User ID: ${userId}, Guest Items: ${guestItems}`);
+    // Begin the transaction
+    await client.query(`BEGIN`);
+
+    // Get or create cart for guest user.
+    let cartResult = await client.query(
+      'SELECT id FROM carts WHERE user_id = $1',
+      [userId]
+    );
+    let cartId;
+
+    if(cartResult.rows.length === 0) {
+      const cartInsert = await client.query(
+        `INSERT INTO carts(user_id, is_active)
+         VALUES($1, TRUE) RETURNING *`,
+         [userId]
+      );
+      // Store cart id
+      cartId = cartInsert.rows[0].id;
+    }else {
+      cartId = cartResult.rows[0].id;
+    };
+    // Track updated items
+    const updatedItems = [];
+
+    // Merge guest items into cart_items
+    for (const item of guestItems) {
+      // Destrcuturing data from item guest.
+      const { productId, quantity } = item;
+      // Check if item is already exists
+      const existingItemResult = await client.query(
+        `SELECT * FROM cart_items
+         WHERE cart_id = $1 AND product_id = $2 
+        `,
+        [cartId, productId]
+      );
+
+      if(existingItemResult.rows.length > 0) {
+        // Update quantity
+        await client.query(
+          `UPDATE cart_items 
+           SET quantity = quantity + $1
+           WHERE cart_id = $2 AND product_id = $3 
+          `,
+          [quantity, cartId, productId]
+        )
+      } else {
+        // Insert new one
+        await client.query(
+          `
+            INSERT INTO cart_items(cart_id, product_id, quantity)
+            VALUES ($1, $2, $3)
+          `,
+          [cartId, productId, quantity]
+        );
+      }
+
+      updatedItems.push({ productId, quantity });
+    }
+
+    // Commit the transaction
+    await client.query('COMMIT');
+
+    return { cartId, items: updatedItems}
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.log(`Error to merge guest cart items`, error.stack);
+    throw error;
+  } finally {
+    // Always release client
+    client.release();
+  }
 }
 
 module.exports = {
@@ -304,5 +384,6 @@ module.exports = {
   addProductToCartService,
   updateCartItemQuantityService,
   removeCartItemQuantityService,
-  deleteItemInCartByIdService
+  deleteItemInCartByIdService,
+  syncGuestCartService
 };

@@ -3,6 +3,7 @@ const app = express();
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const path = require('path');
 const createUserTable = require('./data/createUserTable');
 const createAddressesTable = require('./data/createAddressesTable');
 const createCartsTable = require('./data/createCartsTable');
@@ -25,6 +26,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(helmet());
 app.use(morgan('dev'));
+
+app.use("/images", express.static(path.join(__dirname, "../images")));
+console.log("Serving static files from:", path.join(__dirname, "../images"));
 
 // Handle errors globally
 app.use(errorHandler);

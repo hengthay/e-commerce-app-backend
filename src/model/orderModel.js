@@ -32,24 +32,40 @@ const getAllOrdersService = async () => {
       `
     )
     
-    if(!result.rows) {
-      throw new Error('No orders found');
+    if(result.rows.length === 0) {
+      return null;
     }
-    
-    const orders = {
-      orderId: Number(result.rows[0].order_id),
-      customerName: result.rows[0].customer_name,
-      customerEmail: result.rows[0].customer_email,
-      items: result.rows.map(row => ({
+
+    // Group rows by order_id 
+    const ordersMap = {};
+    // loop throught all result rows
+    result.rows.forEach(row => {
+      const orderId = row.order_id;
+      // Check if that order is already addded
+      if(!ordersMap[orderId]) {
+        // If it not exists we add orderId with an object of data
+         ordersMap[orderId] = {
+          orderId: orderId,
+          customerName: row.customer_name,
+          customerEmail: row.customer_email,
+          totalAmount: Number(row.total_amount),
+          status: row.status,
+          orderDate: row.order_date,
+          items: []
+        };
+      }
+
+      // Push product item into this order
+      ordersMap[orderId].items.push({
         product_title: row.product_title,
         product_price: Number(row.product_price),
-        product_quantity: Number(row.product_quantity),
-        total_amount: Number(row.total_amount),
-        status: row.status,
-        order_date: row.order_date,
-      }))
-    }
-    console.log('Admin retrived all orders ----', orders)
+        product_quantity: Number(row.product_quantity)
+      });
+    })
+
+    // Convert grouped object into array values
+    const orders = Object.values(ordersMap);
+    console.log('Admin retrieved all orders ----', orders)
     // COMMIT transaction
     await client.query('COMMIT');
 
@@ -102,24 +118,35 @@ const getOrdersByUserIdService = async (userId) => {
       [userId]
     );
 
-    if(!result.rows) {
-      throw new Error('No orders found');
+    if(result.rows.length === 0) {
+      return null;
     }
-    
-    const userOrders = {
-      orderId: Number(result.rows[0].order_id),
-      customerName: result.rows[0].customer_name,
-      customerEmail: result.rows[0].customer_email,
-      items: result.rows.map(row => ({
+
+    // Group rows by order_id for this user
+    const ordersMap = new Map();
+    for (const row of result.rows) {
+      const orderId = Number(row.order_id);
+      if (!ordersMap.has(orderId)) {
+        ordersMap.set(orderId, {
+          orderId,
+          customerName: row.customer_name,
+          customerEmail: row.customer_email,
+          total_amount: Number(row.total_amount),
+          status: row.status,
+          order_date: row.order_date,
+          items: []
+        });
+      }
+      const order = ordersMap.get(orderId);
+      order.items.push({
         product_title: row.product_title,
         product_price: Number(row.product_price),
-        product_quantity: Number(row.product_quantity),
-        total_amount: Number(row.total_amount),
-        status: row.status,
-        order_date: row.order_date,
-      }))
+        product_quantity: Number(row.product_quantity)
+      });
     }
-    console.log('User retrived all orders ----', userOrders);
+
+    const userOrders = Array.from(ordersMap.values());
+    console.log('User retrieved all orders ----', userOrders);
     // COMMIT transaction
     await client.query('COMMIT');
 
@@ -253,7 +280,7 @@ const placeOrderService = async (userId, street, city, country, postal_code, pho
     // COMMIT transaction
     await client.query('COMMIT');
 
-    return {order_id: orderId, total_amount: totalAmount};
+    return {order_id: orderId, total_amount: totalAmount, shippingAddressId, billingAddressId};
 
   } catch (error) {
     await client.query('ROLLBACK');

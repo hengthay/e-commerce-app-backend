@@ -25,8 +25,8 @@ const registerUser = async (req, res, next) => {
     const newUser = await registerUserService(name, email, password);
 
     if(!newUser) handleResponse(res, 400, 'User registration failed');
-
     
+    console.log('New User---', newUser);
     return handleResponse(res, 201, 'User registered successfully', {
       id: newUser.id,
       name: newUser.name,
@@ -46,6 +46,7 @@ const loginUser = async (req, res, next) => {
   try {
     const loggedInUser = await loginUserService(email, password);
     console.log('User role: ',loggedInUser.role);
+    console.log(loggedInUser)
     if(!loggedInUser) return handleResponse(res, 400, 'Login failed');
 
     // Sign JWT Token

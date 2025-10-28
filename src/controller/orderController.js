@@ -75,7 +75,7 @@ const placeOrder = async (req, res, next) => {
       return handleResponse(res, 400, 'Invalid userId. It must be a positive integer.');
     }
     if(!street || !city || !country || !postal_code || !phone_number) {
-      return handleResponse(res, 400, 'Address information is missing. Please provide all information before proceed');
+      return handleResponse(res,   400, 'Address information is missing. Please provide all information before proceed');
     }
     
     // Call service to place order, passing address info

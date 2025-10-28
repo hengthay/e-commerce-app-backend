@@ -1,5 +1,5 @@
 // Erorr handler 
-const { getAllProductsService, getProductByIdService, createProductService, updateProductService, deleteProductService } = require('../model/productModel');
+const { getAllProductsService, getProductByIdService, createProductService, updateProductService, deleteProductService, getRecommendedProductsService } = require('../model/productModel');
 const handleResponse = require('../utils/handleResponse');
 
 // Get all products
@@ -9,6 +9,24 @@ const getAllProducts = async (req, res, next) => {
     const products = await getAllProductsService();
 
     console.log('All Products-----', products);
+    // Check if products exist
+    if(!products) return handleResponse(res, 404, 'No products found');
+    // Return successful response with products
+    return handleResponse(res, 200, 'Products retrieved successfully', products);
+
+  } catch (error) {
+    console.log('Unable to get all products', error);
+    next(error);
+  }
+}
+// Get recommended products
+const getRecommendedProducts = async (req, res, next) => {
+  try {
+    // const { type } = req.params;
+    // Fetch all products from the service
+    const products = await getRecommendedProductsService('Fashion');
+
+    console.log('All Recomended Products-----', products);
     // Check if products exist
     if(!products) return handleResponse(res, 404, 'No products found');
     // Return successful response with products
@@ -95,6 +113,7 @@ const deleteProduct = async (req, res, next) => {
 };
 module.exports = {
   getAllProducts,
+  getRecommendedProducts,
   getProductById,
   createProduct,
   updateProduct,
