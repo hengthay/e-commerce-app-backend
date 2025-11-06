@@ -9,12 +9,83 @@ const { default: axios } = require('axios');
 const { buildPaypalClient } = require('../utils/paypalClient');
 
 
+// const createOrder = async (req, res, next) => {
+//   try {
+//     // Get the userId from token
+//     const userId = req.user.id;
+//     console.log(`Order User ID: ${userId}`);
+//     if(!userId) return handleResponse(res, 401, 'Unauthorized.');
+
+//     const totals = await computeCartTotalForUserService(userId);
+//     // Defensive checks
+//     if (!totals || typeof totals.totalDecimal !== 'number') {
+//       console.error('createOrder: totals malformed', { userId, totals });
+//       return handleResponse(res, 500, 'Server error computing cart total.');
+//     }
+//     if(totals.totalDecimal <= 0) return handleResponse(res, 400, 'Cart is empty');
+//      // Format to a string with 2 decimals and validate it is numeric
+//     console.log('createOrder totals=', totals, 'amountString=', Number(totals.totalDecimal).toFixed(2));
+//     const value = Number(totals.totalDecimal).toFixed(2);
+
+//     const request = new checkoutNodeJssdk.orders.OrdersCreateRequest();
+//     request.prefer('return=representation');
+//     request.requestBody({
+//       intent: 'CAPTURE',
+//       purchase_units: [{
+//         amount: { currency_code: 'USD', value },
+//         custom_id: String(userId),
+//       }],
+//       application_context: { 
+//         user_action: 'PAY_NOW',
+//         shipping_preference: 'NO_SHIPPING',
+//         brand_name: "T-Shop"
+//       }
+//     });
+
+//     const client = buildPaypalClient();
+//     const order = await client.execute(request);
+//     // after: const order = await client.execute(request);
+//     const debugId =
+//       order?.headers?.['paypal-debug-id'] ||
+//       order?.headers?.['PayPal-Debug-Id'] ||
+//       order?.headers?.['paypal-debugid'];
+//     console.log('[PP][CREATE] orderId=', order.result.id, 'debugId=', debugId, 'env=', process.env.PAYPAL_ENVIRONMENT);
+
+//     return handleResponse(res, 200, 'Create Order with Paypal Success', {
+//       id: order.result.id,
+//       amount: totals.formatted
+//     });
+
+//   } catch (error) {
+//     console.log('createOrder error:', error);
+//   }
+// }
+
+// Create captureOrder
+// Authenticated. Capture server-side and return captureId.
+// src/controller/paypalController.js
+
 const createOrder = async (req, res, next) => {
   try {
     // Get the userId from token
     const userId = req.user.id;
+    // Get the shipping address from the request body
+    const { shipping_address } = req.body;
+
     console.log(`Order User ID: ${userId}`);
-    if(!userId) return handleResponse(res, 401, 'Unauthorized.');
+    if (!userId) return handleResponse(res, 401, 'Unauthorized.');
+
+    // --- NEW VALIDATION ---
+    if (
+      !shipping_address ||
+      !shipping_address.street ||
+      !shipping_address.city ||
+      !shipping_address.country ||
+      !shipping_address.postal_code
+    ) {
+      return handleResponse(res, 400, 'Incomplete shipping address provided.');
+    }
+    // --- END NEW VALIDATION ---
 
     const totals = await computeCartTotalForUserService(userId);
     // Defensive checks
@@ -22,47 +93,83 @@ const createOrder = async (req, res, next) => {
       console.error('createOrder: totals malformed', { userId, totals });
       return handleResponse(res, 500, 'Server error computing cart total.');
     }
-    if(totals.totalDecimal <= 0) return handleResponse(res, 400, 'Cart is empty');
-     // Format to a string with 2 decimals and validate it is numeric
-    console.log('createOrder totals=', totals, 'amountString=', Number(totals.totalDecimal).toFixed(2));
+    if (totals.totalDecimal <= 0)
+      return handleResponse(res, 400, 'Cart is empty');
+    // Format to a string with 2 decimals and validate it is numeric
+    console.log(
+      'createOrder totals=',
+      totals,
+      'amountString=',
+      Number(totals.totalDecimal).toFixed(2)
+    );
     const value = Number(totals.totalDecimal).toFixed(2);
 
     const request = new checkoutNodeJssdk.orders.OrdersCreateRequest();
     request.prefer('return=representation');
+
+    // --- MODIFIED REQUEST BODY ---
     request.requestBody({
       intent: 'CAPTURE',
-      purchase_units: [{
-        amount: { currency_code: 'USD', value },
-        custom_id: String(userId),
-      }],
-      application_context: { 
+      purchase_units: [
+        {
+          amount: { currency_code: 'USD', value },
+          custom_id: String(userId),
+          
+          // ADD SHIPPING OBJECT
+          shipping: {
+            name: {
+              // Use the name from the authenticated user
+              full_name: req.user.name || 'Valued Customer',
+            },
+            address: {
+              address_line_1: shipping_address.street,
+              admin_area_2: shipping_address.city, // City
+              postal_code: shipping_address.postal_code,
+              country_code: shipping_address.country, // This MUST be an ISO-2 code (e.g., "KH")
+            },
+          },
+        },
+      ],
+      application_context: {
         user_action: 'PAY_NOW',
-        shipping_preference: 'NO_SHIPPING',
-        brand_name: "T-Shop"
-      }
+        // CHANGE shipping_preference
+        shipping_preference: 'SET_PROVIDED_ADDRESS',
+        brand_name: 'T-Shop',
+      },
     });
+    // --- END MODIFIED REQUEST BODY ---
 
     const client = buildPaypalClient();
     const order = await client.execute(request);
-    // after: const order = await client.execute(request);
+    
     const debugId =
       order?.headers?.['paypal-debug-id'] ||
       order?.headers?.['PayPal-Debug-Id'] ||
       order?.headers?.['paypal-debugid'];
-    console.log('[PP][CREATE] orderId=', order.result.id, 'debugId=', debugId, 'env=', process.env.PAYPAL_ENVIRONMENT);
+    console.log(
+      '[PP][CREATE] orderId=',
+      order.result.id,
+      'debugId=',
+      debugId,
+      'env=',
+      process.env.PAYPAL_ENVIRONMENT
+    );
 
     return handleResponse(res, 200, 'Create Order with Paypal Success', {
       id: order.result.id,
-      amount: totals.formatted
+      amount: totals.formatted,
     });
-
   } catch (error) {
-    console.log('createOrder error:', error);
+    // Log the detailed error from PayPal
+    console.error('createOrder error:', error.message || error);
+    if (error.response) {
+      console.error('PayPal API Error Response:', error.response.data);
+    }
+    next(error); // Pass to your error handler
   }
-}
+};
 
-// Create captureOrder
-// Authenticated. Capture server-side and return captureId.
+
 const captureOrder = async (req, res, next) => {
   try {
     // Get user id from token
