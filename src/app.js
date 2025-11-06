@@ -17,6 +17,7 @@ const productRoutes = require('./routes/productRoutes');
 const userRoutes = require('./routes/userRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const orderRoutes = require('./routes/orderRoutes');
+const paypalRoutes = require('./routes/paypalRoutes');
 const errorHandler = require('./middlewares/errorHandling');
 const authenticateToken = require('./middlewares/authenticateToken');
 
@@ -39,6 +40,9 @@ app.use('/api/products', productRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
+
+// Paypal gateway
+app.use('/', paypalRoutes);
 // Dashboard route
 app.get('/', authenticateToken, (req, res) => {
   console.log(req.user);

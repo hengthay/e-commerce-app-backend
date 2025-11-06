@@ -22,6 +22,7 @@ const getCartsByUserIdService = async (userId) => {
       JOIN products as p
         ON ci.product_id = p.id
       WHERE c.user_id = $1 AND c.is_active = TRUE
+      ORDER BY p.id ASC
       `,
       [userId]
     );
@@ -34,11 +35,11 @@ const getCartsByUserIdService = async (userId) => {
       is_active: result.rows[0].is_active,
       created_at: result.rows[0].cart_created_at,
       items: result.rows.map((row) => ({
-        cart_item_id: row.cart_item_id,
-        product_id: row.product_id,
-        product_title: row.product_title,
-        product_price: row.product_price,
-        product_image: row.product_image,
+        cart_items_id: row.cart_item_id,
+        id: row.product_id,
+        title: row.product_title,
+        price: row.product_price,
+        image_url: row.product_image,
         quantity: row.quantity
       }))
     };
@@ -68,8 +69,9 @@ const addProductToCartService = async (userId, productId, quantity) => {
     
     // Begin the transaction
     await client.query('BEGIN');
-    // Check if cart exists for the user
-    const cartResult = await client.query('SELECT * FROM carts WHERE user_id = $1', [userId]);
+      
+    // Check if cart exists for the user and Find ONLY the active cart
+    const cartResult = await client.query('SELECT * FROM carts WHERE user_id = $1 AND is_active = TRUE LIMIT 1', [userId]);
 
     console.log(`Found user cart with ID:${userId}`, cartResult.rows);
     // Store cartId 
@@ -140,7 +142,7 @@ const updateCartItemQuantityService = async (userId, productId, newQuantity) => 
     // Begin the transaction
     await client.query('BEGIN');
     // Check if cart exists for the user
-    const cartResult = await client.query('SELECT * FROM carts WHERE user_id = $1', [userId]);
+    const cartResult = await client.query('SELECT * FROM carts WHERE user_id = $1 AND is_active = TRUE LIMIT 1', [userId]);
     // If cart is not present
     if(cartResult.rows.length === 0) {
       throw new Error(`Cart for user ID ${userId} not found`);
@@ -196,7 +198,7 @@ const removeCartItemQuantityService = async (userId, productId, quantityToRemove
     // Begin the transaction
     await client.query('BEGIN');
     // Check if cart exists for the user
-    const cartResult = await client.query('SELECT * FROM carts WHERE user_id = $1', [userId]);
+    const cartResult = await client.query('SELECT * FROM carts WHERE user_id = $1 AND is_active = TRUE LIMIT 1', [userId]);
 
     if(cartResult.rows.length === 0) {
       throw new Error(`Cart for user ID ${userId} not found`);
@@ -269,7 +271,7 @@ const deleteItemInCartByIdService = async (userId, productId) => {
     // Begin the transaction
     await client.query('BEGIN');
     // Check if cart exists for the user
-    const cartResult = await client.query('SELECT * FROM carts WHERE user_id = $1', [userId]);
+    const cartResult = await client.query('SELECT * FROM carts WHERE user_id = $1 AND is_active = TRUE LIMIT 1', [userId]);
 
     if(cartResult.rows.length === 0) {
       throw new Error(`Cart for user ID ${userId} not found`);
@@ -311,7 +313,7 @@ const syncGuestCartService = async (userId, guestItems) => {
 
     // Get or create cart for guest user.
     let cartResult = await client.query(
-      'SELECT id FROM carts WHERE user_id = $1',
+      'SELECT id FROM carts WHERE user_id = $1 AND is_active = TRUE LIMIT 1',
       [userId]
     );
     let cartId;

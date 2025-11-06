@@ -4,7 +4,23 @@ const pool = require('../config/db');
 // Get all the products
 const getAllProductsService = async () => {
   try {
-    const result = await pool.query('SELECT * FROM products');
+    const result = await pool.query(
+      `
+        SELECT 
+          p.id,
+          p.title,
+          p.price,
+          p.stock,
+          p.image_url,
+          p.created_at,
+          p.updated_at,
+          p.category_id,
+          c.type 
+        FROM products as p
+        JOIN categories as c
+          ON p.category_id = c.id
+      `
+    );
 
     if(!result.rows) throw new Error('No products found');
 
@@ -47,7 +63,26 @@ const getRecommendedProductsService = async (type) => {
 // Get indiviual product by ID
 const getProductByIdService = async (id) => {
   try {
-    const result = await pool.query('SELECT * FROM products WHERE id = $1', [id]);
+    const result = await pool.query(
+      `
+        SELECT 
+          p.id,
+          p.title,
+          p.price,
+          p.stock,
+          p.image_url,
+          p.description,
+          p.created_at,
+          p.updated_at,
+          p.category_id,
+          c.type 
+        FROM products as p
+        JOIN categories as c
+          ON p.category_id = c.id
+        WHERE p.id = $1
+      `
+      , [id]
+    );
 
     if(!result.rows[0]) throw new Error('Product not found');
 

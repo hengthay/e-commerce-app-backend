@@ -16,7 +16,7 @@ const getCartsByUserId = async (req, res, next) => {
     const userCarts = await getCartsByUserIdService(Number(userId));
 
     // Check if cart is not found
-    if(!userCarts) return handleResponse(res, 404, 'Cart is not found');
+    if(!userCarts) return handleResponse(res, 200, 'Cart is not found');
 
     // Return successful response
     console.log('Cart is retrieved successfully------', userCarts);
@@ -170,6 +170,7 @@ const syncGuestCart = async (req, res, next) => {
     if(!guestItems) {
       return handleResponse(res, 400, 'Not received guestItems from frontend');
     }
+
     const syncCarts = await syncGuestCartService(userId, guestItems);
 
     if(!syncCarts) {
