@@ -17,7 +17,7 @@ const authenticateToken = (req, res, next) => {
       });
     }
     req.user = user;
-    console.log('JWT payload: ', user);
+    // console.log('JWT payload: ', user);
     next();
   });
 };
