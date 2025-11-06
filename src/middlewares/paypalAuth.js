@@ -24,7 +24,8 @@ async function getAccessToken() {
       return cached.token;
     }
 
-    const url = `${process.env.PAYPAL_BASE_URL}/v1/oauth2/token`;
+    // const url = `${process.env.PAYPAL_BASE_URL}/v1/oauth2/token`;
+    const url = `${PAYPAL_BASE}/v1/oauth2/token`;
     const body = 'grant_type=client_credentials';
 
     const res = await axios.post(url, body, {

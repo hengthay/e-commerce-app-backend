@@ -65,6 +65,8 @@ const { buildPaypalClient } = require('../utils/paypalClient');
 // Authenticated. Capture server-side and return captureId.
 // src/controller/paypalController.js
 
+// REPLACE the entire createOrder function with this:
+
 const createOrder = async (req, res, next) => {
   try {
     // Get the userId from token
@@ -75,7 +77,7 @@ const createOrder = async (req, res, next) => {
     console.log(`Order User ID: ${userId}`);
     if (!userId) return handleResponse(res, 401, 'Unauthorized.');
 
-    // --- NEW VALIDATION ---
+    // --- VALIDATION ---
     if (
       !shipping_address ||
       !shipping_address.street ||
@@ -85,29 +87,22 @@ const createOrder = async (req, res, next) => {
     ) {
       return handleResponse(res, 400, 'Incomplete shipping address provided.');
     }
-    // --- END NEW VALIDATION ---
+    // --- END VALIDATION ---
 
     const totals = await computeCartTotalForUserService(userId);
-    // Defensive checks
+    
     if (!totals || typeof totals.totalDecimal !== 'number') {
       console.error('createOrder: totals malformed', { userId, totals });
       return handleResponse(res, 500, 'Server error computing cart total.');
     }
     if (totals.totalDecimal <= 0)
       return handleResponse(res, 400, 'Cart is empty');
-    // Format to a string with 2 decimals and validate it is numeric
-    console.log(
-      'createOrder totals=',
-      totals,
-      'amountString=',
-      Number(totals.totalDecimal).toFixed(2)
-    );
+    
     const value = Number(totals.totalDecimal).toFixed(2);
 
     const request = new checkoutNodeJssdk.orders.OrdersCreateRequest();
     request.prefer('return=representation');
 
-    // --- MODIFIED REQUEST BODY ---
     request.requestBody({
       intent: 'CAPTURE',
       purchase_units: [
@@ -115,25 +110,24 @@ const createOrder = async (req, res, next) => {
           amount: { currency_code: 'USD', value },
           custom_id: String(userId),
           
-          // ADD SHIPPING OBJECT
           shipping: {
             name: {
-              // Use the name from the authenticated user
-              full_name: req.user.name || 'Valued Customer',
+              // --- THIS IS THE CORRECTED LINE ---
+              // Use the form's fullname. Fallback to login name, then to generic.
+              full_name: shipping_address.fullname || req.user.name || 'Valued Customer',
             },
             address: {
               address_line_1: shipping_address.street,
               admin_area_2: shipping_address.city, // City
               postal_code: shipping_address.postal_code,
-              country_code: shipping_address.country, // This MUST be an ISO-2 code (e.g., "KH")
+              country_code: shipping_address.country, // This is now "KH", "US", etc.
             },
           },
         },
       ],
       application_context: {
         user_action: 'PAY_NOW',
-        // CHANGE shipping_preference
-        shipping_preference: 'SET_PROVIDED_ADDRESS',
+        shipping_preference: 'SET_PROVIDED_ADDRESS', // Correct
         brand_name: 'T-Shop',
       },
     });
@@ -160,12 +154,11 @@ const createOrder = async (req, res, next) => {
       amount: totals.formatted,
     });
   } catch (error) {
-    // Log the detailed error from PayPal
     console.error('createOrder error:', error.message || error);
     if (error.response) {
       console.error('PayPal API Error Response:', error.response.data);
     }
-    next(error); // Pass to your error handler
+    next(error); 
   }
 };
 
