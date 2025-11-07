@@ -1,5 +1,5 @@
 const express = require('express');
-const router = express();
+const router = express.Router();
 const authenticateToken = require('../middlewares/authenticateToken');
 const { createOrder, captureOrder, finalizeOrder, getOrderDetails } = require('../controller/paypalController');
 
