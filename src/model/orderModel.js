@@ -1,4 +1,6 @@
 const pool = require('../config/db');
+const { computeCartTotalForUserService } = require('./cartModel');
+
 
 // Get all orders
 const getAllOrdersService = async () => {
@@ -232,10 +234,11 @@ const placeOrderService = async (userId, street, city, country, postal_code, pho
       throw new Error('No active cart or items found.');
     };
 
-    // 2. Calculate total amount
-    const totalAmount = cartResult.rows.reduce((sum, item) => {
-      return sum + (Number(item.price) * Number(item.quantity));
-    }, 0);
+    // 2. Calculate total amount using computeCartTotalForUserService
+    const totalDecimal = await computeCartTotalForUserService(userId);
+
+    const totalAmount = totalDecimal;
+
     console.log('Total Amount: ', totalAmount);
 
     // 3. Create a new order

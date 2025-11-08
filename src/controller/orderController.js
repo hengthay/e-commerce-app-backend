@@ -1,5 +1,7 @@
 const handleResponse = require('../utils/handleResponse');
 const { getAllOrdersService, getOrdersByUserIdService, placeOrderService, UpdateOrderStatusByAdminService } = require('../model/orderModel');
+const Stripe = require('stripe');
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Get all orders (admin only)
 const getAllOrders = async (req, res, next) => {
@@ -82,13 +84,44 @@ const placeOrder = async (req, res, next) => {
     const placedOrder = await placeOrderService(userId, street, city, country, postal_code, phone_number);
 
     // Check if order is placed successfully
-    if(!placedOrder) {
-      return handleResponse(res, 400, 'Unable to place order');
-    }
-    // Return successful response
-    console.log('Order is placed successfully------', placedOrder);
+    if (!placedOrder || !placedOrder.order_id)
+      return handleResponse(res, 500, 'Unable to place order.');
 
-    return handleResponse(res, 201, 'Order is successfully placed', placedOrder);
+    // 2️⃣ Create Stripe PaymentIntent for this order
+    const currency = process.env.STRIPE_CURRENCY || 'usd';
+    const amount = Math.round(Number(placedOrder.total_amount) * 100);
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency,
+      metadata: {
+        order_id: String(placedOrder.order_id),
+        user_id: String(userId)
+      },
+      shipping: {
+        name: req.user.name || '',
+        phone: phone_number || null,
+        address: {
+          line1: street,
+          city,
+          postal_code,
+          country
+        }
+      },
+      automatic_payment_methods: { enabled: true }
+    });
+
+    console.log('Place Order Data: ', placeOrder, {stripe: {clientSecret: paymentIntent.client_secret,
+    paymentIntentId: paymentIntent.id}})
+
+    // 3️⃣ Return combined payload
+    return handleResponse(res, 201, 'Order placed & PaymentIntent created', {
+      order: placedOrder,
+      stripe: {
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id
+      }
+    });
   } catch (error) {
     console.log('Unable to make a place order', error.stack);
     next(error);

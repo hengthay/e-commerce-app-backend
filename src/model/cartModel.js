@@ -1,5 +1,45 @@
 const pool = require('../config/db');
 
+// Compute Cart amount
+const computeCartTotalForUserService = async (userId) => {
+  const client = await pool.connect();
+  try {
+    // Query to get the quantity and price from db
+    const cartResult = await client.query(
+      `
+        SELECT
+        ci.quantity,
+        p.price AS product_price
+        FROM carts AS c
+        JOIN cart_items AS ci ON c.id = ci.cart_id
+        JOIN products AS p ON ci.product_id = p.id
+        WHERE c.user_id = $1 AND c.is_active = TRUE
+        ORDER BY p.id ASC
+      `,
+      [userId]
+    );
+    // If no carts found
+    if(!cartResult.rows.length) return {totalDecimal: 0, formatted: "0.00"};
+    // core reduce logic (ensure product_price used and parsed safely)
+    const totalDecimal = cartResult.rows.reduce((acc, item) => {
+      const price = Number(item.product_price); // coerce; invalid -> NaN
+      const qty   = Number(item.quantity);
+      const p = isNaN(price) ? 0 : price;
+      const q = isNaN(qty)   ? 0 : qty;
+      return acc + (p * q);
+    }, 0);
+    if (isNaN(totalDecimal)) {
+      console.error('computeCartTotalForUserService: NaN total', { userId, rows: cartResult.rows });
+    }
+    // Return totalDecimal price and formatted
+    return totalDecimal;
+  } catch (error) {
+    console.log('Error to computeCart');
+    throw error;
+  }finally {
+    client.release();
+  }
+}
 // Get cart by user ID
 const getCartsByUserIdService = async (userId) => {
   try {
@@ -387,5 +427,6 @@ module.exports = {
   updateCartItemQuantityService,
   removeCartItemQuantityService,
   deleteItemInCartByIdService,
-  syncGuestCartService
+  syncGuestCartService,
+  computeCartTotalForUserService
 };
