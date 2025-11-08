@@ -43,7 +43,8 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 
 // Paypal gateway
-app.use('/', paypalRoutes);
+app.use('/payments/', paypalRoutes);
+
 // Stripe gateway
 app.use('/payments', stripeRoutes);
 // Dashboard route

@@ -1,12 +1,6 @@
-// lib/paypalClient.js
+// utils/paypalClient.js
 const checkoutNodeJssdk = require('@paypal/checkout-server-sdk');
 
-/**
- * Builds a PayPal client using env:
- *  - PAYPAL_ENVIRONMENT = 'sandbox' | 'live'
- *  - PAYPAL_CLIENT_ID
- *  - PAYPAL_CLIENT_SECRET
- */
 function buildPaypalClient() {
   const { PAYPAL_ENVIRONMENT, PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET } = process.env;
   const env =

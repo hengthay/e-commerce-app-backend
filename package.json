@@ -12,7 +12,8 @@
     "morgan": "^1.10.1",
     "node-fetch": "^3.3.2",
     "pg": "^8.16.3",
-    "stripe": "^19.3.0"
+    "stripe": "^19.3.0",
+    "uuid": "^13.0.0"
   },
   "name": "e-commerce-app-backend",
   "version": "1.0.0",
