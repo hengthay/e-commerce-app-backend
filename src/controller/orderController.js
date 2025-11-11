@@ -1,5 +1,5 @@
 const handleResponse = require('../utils/handleResponse');
-const { getAllOrdersService, getOrdersByUserIdService, placeOrderService, UpdateOrderStatusByAdminService } = require('../model/orderModel');
+const { getAllOrdersService, getOrdersByUserIdService, placeOrderService, UpdateOrderStatusByAdminService, getOrderStatusService } = require('../model/orderModel');
 const Stripe = require('stripe');
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -158,9 +158,39 @@ const updateOrderStatusByAdmin = async (req, res, next) => {
     next(error);
   }
 }
+
+const getOrderStatus = async (req, res, next) => {
+  try {
+    // Get order id
+    const { orderId } = req.params;
+
+    console.log(`Received Order ID: ${orderId}`);
+
+    const orderIdParsed = parseInt(orderId, 10);
+
+    if(!Number.isInteger(orderIdParsed) || orderIdParsed <= 0) {
+      return handleResponse(res, 400, 'Invalid orderId. It must be a positive integer.');
+    }
+
+    const getStatus = await getOrderStatusService(orderIdParsed);
+
+    if(!getStatus) {
+      return handleResponse(res, 400, 'Unable to get order status');
+    }
+
+    // Return successful response
+    console.log('Order Status get successfully------', getStatus);
+
+    return handleResponse(res, 200, 'Order status is get successfully', getStatus);
+  } catch (error) {
+    console.log(`Failed to get order status with orderId:${req.params.orderId}`, error.stack);
+    next(error);
+  }
+}
 module.exports = {
   getAllOrders,
   getOrdersByUserId,
   placeOrder,
-  updateOrderStatusByAdmin
+  updateOrderStatusByAdmin,
+  getOrderStatus
 };

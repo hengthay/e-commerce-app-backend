@@ -19,6 +19,7 @@ const getAllOrdersService = async () => {
           u.email as customer_email,
           p.title as product_title,
           p.price as product_price,
+          p.image_url as image_url,
           oi.quantity as product_quantity,
           o.total_amount,
           o.status,
@@ -60,6 +61,7 @@ const getAllOrdersService = async () => {
       // Push product item into this order
       ordersMap[orderId].items.push({
         product_title: row.product_title,
+        image_url: row.image_url,
         product_price: Number(row.product_price),
         product_quantity: Number(row.product_quantity)
       });
@@ -102,6 +104,7 @@ const getOrdersByUserIdService = async (userId) => {
           u.name as customer_name,
           u.email as customer_email,
           p.title as product_title,
+          p.image_url as image_url,
           p.price as product_price,
           oi.quantity as product_quantity,
           o.total_amount,
@@ -142,6 +145,7 @@ const getOrdersByUserIdService = async (userId) => {
       const order = ordersMap.get(orderId);
       order.items.push({
         product_title: row.product_title,
+        image_url: row.image_url,
         product_price: Number(row.product_price),
         product_quantity: Number(row.product_quantity)
       });
@@ -345,9 +349,45 @@ const UpdateOrderStatusByAdminService = async (orderId, status) => {
     client.release();
   }
 }
+
+// Get order status for tracking order
+const getOrderStatusService = async (orderId) => {
+  try {
+    console.log('Order ID: ', orderId);
+
+    if(!Number.isInteger(orderId) || orderId <= 0) {
+      throw new Error('Invalid orderId. It must be a positive integer.');
+    }
+
+    const orderStatus = await pool.query(
+      `
+        SELECT 
+          status, 
+          created_at,
+          updated_at
+        FROM orders
+        WHERE id = $1
+      `,
+      [orderId]
+    )
+
+    if(orderStatus.rows.length === 0) {
+      throw new Error(`Order with ID: ${orderId} not found.`);
+    }
+
+    console.log('Order Status with orderId: ', orderId, ' get success: ', orderStatus.rows[0]);
+
+    return orderStatus.rows[0]
+  } catch (error) {
+    console.log('Error to get order status: ', error.stack);
+    throw error;
+  }
+}
+
 module.exports = {
   getAllOrdersService,
   getOrdersByUserIdService,
   placeOrderService,
-  UpdateOrderStatusByAdminService
+  UpdateOrderStatusByAdminService,
+  getOrderStatusService
 }

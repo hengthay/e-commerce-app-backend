@@ -1,5 +1,5 @@
 const express = require('express');
-const { getAllOrders, getOrdersByUserId, placeOrder, updateOrderStatusByAdmin } = require('../controller/orderController');
+const { getAllOrders, getOrdersByUserId, placeOrder, updateOrderStatusByAdmin, getOrderStatus } = require('../controller/orderController');
 const authenticateToken = require('../middlewares/authenticateToken');
 const authorizeRoles = require('../middlewares/authorizeRoles');
 const router = express.Router();
@@ -8,7 +8,10 @@ const router = express.Router();
 router.get('/', authenticateToken, authorizeRoles('admin'), getAllOrders);
 
 // For user who logged in only
-router.get('/my', authenticateToken, authorizeRoles('user'), getOrdersByUserId);
+router.get('/my', authenticateToken, authorizeRoles('user', 'admin'), getOrdersByUserId);
+
+// Get order status for tracking order
+router.get('/:orderId/track-order', authenticateToken, authorizeRoles('user', 'admin'), getOrderStatus);
 
 // For placing order
 router.post('/checkout', authenticateToken, authorizeRoles('user', 'admin'), placeOrder);
