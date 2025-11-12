@@ -1,5 +1,4 @@
-const { updateProductService } = require('../model/productModel');
-const { getAllUserService, getUserByIdService, deleteUserProfileService, updateUserProfileByAdminService, deleteUserProfileByAdminService, updateUserProfileService } = require('../model/userModel');
+const { getAllUserService, getUserByIdService, deleteUserProfileService, updateUserProfileByAdminService, deleteUserProfileByAdminService, updateUserProfileService, getUserProfileByIdService } = require('../model/userModel');
 const handleResponse = require('../utils/handleResponse');
 
 // Get all users only admin
@@ -27,6 +26,34 @@ const getUserById = async (req, res, next) => {
     return handleResponse(res, 200, `User with ID:${id} Retrieved Successfully`, individualUser);
   } catch (error) {
     console.log(`Error to get specific user with ID:${id}`, error);
+    next(error);
+  }
+}
+
+// Get user profile by id
+const getUserProfileById = async (req, res, next) => {
+  try {
+    // Get user id from token
+    const userId = req.user.id;
+
+    const getUserProfile = await getUserProfileByIdService(userId);
+
+    if(!getUserProfile) return handleResponse(res, 400, `User profile with id:${userId} error to get.`);
+
+    console.log('Profile', getUserProfile);
+    // Normalize nullable address fields to empty strings to make frontend simple
+    const normalized = {
+      name: getUserProfile.name || "",
+      email: getUserProfile.email || "",
+      role: getUserProfile.role || "",
+      street: getUserProfile.street || "",
+      city: getUserProfile.city || "",
+      country: getUserProfile.country || "",
+      phone_number: getUserProfile.phone_number || ""
+    };
+    return handleResponse(res, 200, `User profile with id:${userId} get successful.`, normalized);
+  } catch (error) {
+    console.log('Unable to get user profile ', error);
     next(error);
   }
 }
@@ -104,5 +131,6 @@ module.exports = {
   updateUserProfileByAdmin,
   deleteUserProfileByAdmin,
   updateUserProfile,
-  deleteUserProfile
+  deleteUserProfile,
+  getUserProfileById
 };

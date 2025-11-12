@@ -1,5 +1,5 @@
 const express = require('express');
-const { getAllUser, getUserById, updateUserProfileByAdmin, deleteUserProfileByAdmin, updateUserProfile, deleteUserProfile } = require('../controller/userController');
+const { getAllUser, getUserById, updateUserProfileByAdmin, deleteUserProfileByAdmin, updateUserProfile, deleteUserProfile, getUserProfileById } = require('../controller/userController');
 const authenticateToken = require('../middlewares/authenticateToken');
 const authorizeRoles = require('../middlewares/authorizeRoles');
 const router = express.Router();
@@ -11,6 +11,7 @@ router.delete('/profile', authenticateToken, authorizeRoles('user'), deleteUserP
 
 // Only Admin who can performance on these routes (protected route)
 router.get('/', authenticateToken, authorizeRoles("admin"), getAllUser);
+router.get('/profile', authenticateToken, authorizeRoles('user', 'admin'), getUserProfileById);
 router.get('/:id', authenticateToken, authorizeRoles("admin"), getUserById);
 router.put('/:id', authenticateToken, authorizeRoles("admin"), updateUserProfileByAdmin);
 router.delete('/:id', authenticateToken, authorizeRoles("admin"), deleteUserProfileByAdmin);

@@ -31,6 +31,36 @@ const getUserByIdService = async (id) => {
   }
 }
 
+// Get user profile by Id
+const getUserProfileByIdService = async (id) => {
+  try {
+    const result = await pool.query(
+      `
+        SELECT 
+          u.name,
+          u.email,
+          u.role,
+          a.street,
+          a.city,
+          a.country,
+          a.phone_number
+        FROM users as u
+        LEFT JOIN addresses as a
+          ON u.id = a.user_id
+        WHERE u.id = $1
+      `,
+      [id]
+    );
+
+    if(!result.rows[0]) throw new Error(`User profile with ID ${id} not found`);
+
+    return result.rows[0] || null;
+  } catch (error) {
+    console.log('Error to get user profile', error.stack);
+    throw error;
+  }
+}
+
 // Update User Profile
 // Allow user to update only their name, email, and password they cannot update role or timestamps
 const updateUserProfileService = async (id, name, email, password) => {
@@ -191,5 +221,6 @@ module.exports = {
   updateUserProfileService,
   deleteUserProfileService,
   updateUserProfileByAdminService,
-  deleteUserProfileByAdminService
+  deleteUserProfileByAdminService,
+  getUserProfileByIdService
 };
