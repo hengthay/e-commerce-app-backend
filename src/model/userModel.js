@@ -43,7 +43,8 @@ const getUserProfileByIdService = async (id) => {
           a.street,
           a.city,
           a.country,
-          a.phone_number
+          a.phone_number,
+          a.postal_code
         FROM users as u
         LEFT JOIN addresses as a
           ON u.id = a.user_id
@@ -61,6 +62,95 @@ const getUserProfileByIdService = async (id) => {
   }
 }
 
+// Update user profile and address
+const updateUserProfileAddressService = async (id, name, street, city, country, postal_code, phone_number) => {
+
+  const client = await pool.connect();
+
+  try {
+    console.log(`Received Data for update profile, userId:${id}, name:${name}, phone_number:${phone_number}, street:${street}, city:${city}, country:${country}, postal_code:${postal_code}`);
+
+    if(!id) throw new Error('User id is required.');
+    if(!name || !phone_number || !street || !city || !country || !postal_code) {
+      return new Error('Invalid information! Name, Phone-number, Street, City, Country and Postal-Code is required');
+    };
+
+    // Begin the transaction
+    await client.query('BEGIN');
+
+    // Update username
+    const updateUsername = await client.query(
+      `
+        UPDATE users
+        SET name = $1,
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING id, name
+      `,
+      [name, id]
+    );
+
+    if(updateUsername.rowCount === 0) throw new Error('Failed to update username'); 
+    const updateUser = updateUsername.rows[0];
+
+    // Upadate user address of shipping
+    const updateUserAddress = await client.query(
+      `
+        UPDATE addresses
+        SET street = $1,
+            city = $2,
+            country = $3,
+            postal_code = $4,
+            phone_number = $5,
+            updated_at = NOW()
+        WHERE user_id = $6
+        RETURNING *;
+      `,
+      [street, city, country, postal_code, phone_number, id]
+    )
+    // Store userAddress
+    let address;
+
+    if(updateUserAddress.rowCount === 0) {
+      // Insert new address in case you address not exisits.
+      const insertAddress = await client.query(
+        `
+          INSERT INTO addresses (
+              user_id, 
+              street, 
+              city, 
+              country, 
+              postal_code,
+              phone_number, 
+              created_at, 
+              updated_at
+            )
+          VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+          RETURNING *;
+        `,
+        [id, street, city, country, postal_code, phone_number]
+      );
+
+      address = insertAddress.rows[0];
+    }else {
+      address = updateUserAddress.rows[0];
+    }
+
+    await client.query('COMMIT');
+
+    console.log('User Profile and Address Updated successful.');
+    return {
+      user: updateUser,
+      address,
+    }
+  } catch (error) {
+    await client.query('ROLLBACK')
+    console.log('Error to update user profile ', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 // Update User Profile
 // Allow user to update only their name, email, and password they cannot update role or timestamps
 const updateUserProfileService = async (id, name, email, password) => {
@@ -222,5 +312,6 @@ module.exports = {
   deleteUserProfileService,
   updateUserProfileByAdminService,
   deleteUserProfileByAdminService,
-  getUserProfileByIdService
+  getUserProfileByIdService,
+  updateUserProfileAddressService
 };

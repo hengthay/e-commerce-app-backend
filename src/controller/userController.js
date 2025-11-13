@@ -1,4 +1,4 @@
-const { getAllUserService, getUserByIdService, deleteUserProfileService, updateUserProfileByAdminService, deleteUserProfileByAdminService, updateUserProfileService, getUserProfileByIdService } = require('../model/userModel');
+const { getAllUserService, getUserByIdService, deleteUserProfileService, updateUserProfileByAdminService, deleteUserProfileByAdminService, updateUserProfileService, getUserProfileByIdService, updateUserProfileAddressService } = require('../model/userModel');
 const handleResponse = require('../utils/handleResponse');
 
 // Get all users only admin
@@ -35,6 +35,7 @@ const getUserProfileById = async (req, res, next) => {
   try {
     // Get user id from token
     const userId = req.user.id;
+    if(!userId) throw new Error('User id is required');
 
     const getUserProfile = await getUserProfileByIdService(userId);
 
@@ -49,11 +50,58 @@ const getUserProfileById = async (req, res, next) => {
       street: getUserProfile.street || "",
       city: getUserProfile.city || "",
       country: getUserProfile.country || "",
-      phone_number: getUserProfile.phone_number || ""
+      phone_number: getUserProfile.phone_number || "",
+      postal_code: getUserProfile.postal_code || "",
     };
+
     return handleResponse(res, 200, `User profile with id:${userId} get successful.`, normalized);
   } catch (error) {
     console.log('Unable to get user profile ', error);
+    next(error);
+  }
+}
+
+// Update user profile and address
+const updateUserProfileAddress = async (req, res, next) => {
+  try {
+    // Get userId from token
+    const userId = req.user.id;
+    // Get req body data
+    const {
+      name,
+      street,
+      city,
+      country,
+      phone_number,
+      postal_code
+    } = req.body;
+    
+    console.log('UserID: ', userId);
+    console.log('Req Body Data ----', {name, street, city, country, phone_number, postal_code});
+
+    // Validation
+    if(!userId || userId <= 0) return handleResponse(res, 400, 'User id is required and must positive');
+
+    if(!name || !phone_number || !street || !city || !country || !postal_code) {
+      return handleResponse(res, 400, 'All field is required!');
+    };
+
+    const profileUpdated = await updateUserProfileAddressService(userId, name, street, city, country, postal_code, phone_number);
+
+    if(!profileUpdated) return handleResponse(res, 400, 'Failed to update user profile and address');
+
+    const normalized = {
+      name: profileUpdated.user?.name || "",
+      street: profileUpdated.address?.street || "",
+      city: profileUpdated.address?.city || "",
+      country: profileUpdated.address?.country || "",
+      postal_code: profileUpdated.address?.postal_code || "",
+      phone_number: profileUpdated.address?.phone_number || "",
+    };
+
+    return handleResponse(res, 201, "Profile and Address is updated successful.", normalized);
+  } catch (error) {
+    console.log('Unable to updated user profile and address: ', error);
     next(error);
   }
 }
@@ -132,5 +180,6 @@ module.exports = {
   deleteUserProfileByAdmin,
   updateUserProfile,
   deleteUserProfile,
-  getUserProfileById
+  getUserProfileById,
+  updateUserProfileAddress
 };
