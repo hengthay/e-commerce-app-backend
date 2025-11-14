@@ -156,7 +156,7 @@ const addProductToCartService = async (userId, productId, quantity) => {
     await client.query('COMMIT');
     return {cartId, productId, quantityAdded: quantity};
   } catch (error) {
-    console.log('Error to adding an item to cart: ', error.stack);
+    console.log('Error to adding an item to cart: ', error);
     throw error;
   } finally {
     // Always release cliend
@@ -212,7 +212,7 @@ const updateCartItemQuantityService = async (userId, productId, newQuantity) => 
 
     return {userId, productId, newQuantity};
   } catch (error) {
-    console.log('Error to updating cart: ', error.stack);
+    console.log('Error to updating cart: ', error);
     throw error;
   } finally {
     // Always release client
@@ -264,6 +264,10 @@ const removeCartItemQuantityService = async (userId, productId, quantityToRemove
     if (currentQuantity < quantityToRemove) {
       throw new Error("Not enough quantity to remove");
     }
+    // If quantity equal to 1 disable user from decrease to zero
+    if (currentQuantity === 1) {
+      throw new Error("Cannot decrease quantity to zero");
+    }
     // Update cart item quantity
     await client.query(
       `
@@ -289,7 +293,7 @@ const removeCartItemQuantityService = async (userId, productId, quantityToRemove
 
     return {userId, productId, quantityRemoved: quantityToRemove};
   } catch (error) {
-    console.log('Error to remove cart quantity: ', error.stack);
+    console.log('Error to remove cart quantity: ', error);
     throw error;
   } finally {
     // Always release client
@@ -336,7 +340,7 @@ const deleteItemInCartByIdService = async (userId, productId) => {
 
     return {userId, productId};
   } catch (error) {
-    console.log(`Error to delete item in cart by id:${productId}`, error.stack);
+    console.log(`Error to delete item in cart by id:${productId}`, error);
     throw error;
   }
 };
@@ -413,7 +417,7 @@ const syncGuestCartService = async (userId, guestItems) => {
     return { cartId, items: updatedItems}
   } catch (error) {
     await client.query('ROLLBACK');
-    console.log(`Error to merge guest cart items`, error.stack);
+    console.log(`Error to merge guest cart items`, error);
     throw error;
   } finally {
     // Always release client

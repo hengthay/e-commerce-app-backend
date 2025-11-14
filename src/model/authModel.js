@@ -8,7 +8,7 @@ const getAllUsersService = async () => {
 
     return result.rows;
   } catch (error) {
-    console.log('Error to get all users', error.stack);
+    console.log('Error to get all users', error);
     throw error;
   }
 }
@@ -36,7 +36,7 @@ const registerUserService = async (name, email, password) => {
     
     return insertResult.rows[0];
   } catch (error) {
-    console.log('Unable to create user', error.stack);
+    console.log('Unable to create user', error);
     throw error;
   }
 };

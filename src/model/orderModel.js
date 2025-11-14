@@ -159,7 +159,7 @@ const getOrdersByUserIdService = async (userId) => {
     return userOrders;
   } catch (error) {
     await client.query('ROLLBACK');
-    console.log(`Error to get orders by userId: ${userId}`, error.stack);
+    console.log(`Error to get orders by userId: ${userId}`, error);
     throw error;
   } finally {
     // Always release the client back to the pool
@@ -291,7 +291,7 @@ const placeOrderService = async (userId, street, city, country, postal_code, pho
 
   } catch (error) {
     await client.query('ROLLBACK');
-    console.log(`Error to place order for userId: ${userId}`, error.stack);
+    console.log(`Error to place order for userId: ${userId}`, error);
     throw error;
   }finally {
     // Always release the client back to the pool
@@ -343,7 +343,7 @@ const UpdateOrderStatusByAdminService = async (orderId, status) => {
     return updateResult.rows[0];
   } catch (error) {
     await client.query('ROLLBACK');
-    console.log('Error to update order status: ', error.stack);
+    console.log('Error to update order status: ', error);
     throw error;
   } finally {
     client.release();
@@ -379,7 +379,7 @@ const getOrderStatusService = async (orderId) => {
 
     return orderStatus.rows[0]
   } catch (error) {
-    console.log('Error to get order status: ', error.stack);
+    console.log('Error to get order status: ', error);
     throw error;
   }
 }

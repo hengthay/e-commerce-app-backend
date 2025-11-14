@@ -57,7 +57,7 @@ const getUserProfileByIdService = async (id) => {
 
     return result.rows[0] || null;
   } catch (error) {
-    console.log('Error to get user profile', error.stack);
+    console.log('Error to get user profile', error);
     throw error;
   }
 }

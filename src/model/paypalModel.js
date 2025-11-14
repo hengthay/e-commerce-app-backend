@@ -81,6 +81,8 @@ const updateOrderPaymentService = async (orderId, provider, paymentRef, paymentS
       [provider, paymentRef, paymentStatus, orderId]
     );
     return true;
+  } catch(error) {
+    console.log('Error to update payment status', error);
   } finally {
     client.release();
   }
