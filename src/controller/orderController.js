@@ -48,14 +48,16 @@ const getOrdersByUserId = async (req, res, next) => {
     // Call service to get all orders
     const userOrders = await getOrdersByUserIdService(userId);
 
+    // Normalize to empty array if service returns null/undefined
+    const normalizedOrders = Array.isArray(userOrders) ? userOrders : [];
     // Check if orders are found
-    if(!userOrders) {
-      return handleResponse(res, 404, 'No orders found');
-    }
+    // if(!userOrders) {
+    //   return handleResponse(res, 404, 'No orders found');
+    // }
     // Return successful response
-    console.log('User orders are retrieved successfully------', userOrders);
+    console.log('User orders are retrieved successfully------', normalizedOrders);
 
-    return handleResponse(res, 200, 'Orders are successfully retrieved', userOrders);
+    return handleResponse(res, 200, 'Orders are successfully retrieved', normalizedOrders);
   } catch (error) {
     console.log('Unable to get all orders', error.stack);
     next(error);

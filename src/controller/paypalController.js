@@ -5,7 +5,8 @@ const { computeCartTotalForUserService, findOrderByPaymentService, updateOrderPa
 const { placeOrderService } = require('../model/orderModel');
 const { getAccessToken, PAYPAL_BASE, get_access_token } = require('../middlewares/paypalAuth');
 const { default: axios } = require('axios');
-
+const hostOrigin = (process.env.BACKEND_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 // create a PayPal order for the current user and return the PayPal order.id to the frontend.
 const createOrder = async (req, res, next) => {
   console.log('--- createOrder INCOMING REQUEST ---');
@@ -325,9 +326,123 @@ const getOrderDetails = async (req, res, next) => {
   }
 };
 
+// Create redirect Url for mobile side
+const createRedirectUrl = async (req, res, next) => {
+  console.log('--- createRedirectUrl INCOMING REQUEST ---');
+  console.log('USER:', JSON.stringify(req.user, null, 2));
+  console.log('BODY:', JSON.stringify(req.body, null, 2));
+  try {
+    // Get userId from token
+    const userId = req.user?.id;
+    // Get shipping_address from req.body
+    const { shipping_address } = req.body || {};
+    // If userId not present.
+    if (!userId) return handleResponse(res, 401, 'Unauthorized.');
+
+    // Basic shipping validation (optional but helpful)
+    if (
+      !shipping_address ||
+      !shipping_address.street ||
+      !shipping_address.city ||
+      !shipping_address.country ||
+      !shipping_address.postal_code
+    ) {
+      return handleResponse(res, 400, 'Incomplete shipping address provided.');
+    }
+
+    // Validate country code
+    if (!/^[A-Z]{2}$/.test(shipping_address.country)) {
+      return handleResponse(res, 400, 'Country code must be a valid 2-letter ISO code');
+    }
+
+    // Compute totals server-side (use your service)
+    const totals = await computeCartTotalForUserService(userId);
+
+    if (!totals || typeof totals.totalDecimal !== 'number') {
+      console.error('createRedirectUrl: totals malformed', { userId, totals });
+      return handleResponse(res, 500, 'Server error computing cart total.');
+    }
+    // If total is less than zero
+    if (totals.totalDecimal <= 0) {
+      return handleResponse(res, 400, 'Cart is empty');
+    }
+
+    const value = Number(totals.totalDecimal).toFixed(2);
+    // Build PayPal order payload with application_context (return/cancel)
+    const payload = {
+      intent: 'CAPTURE',
+      purchase_units: [
+        {
+          amount: {
+            currency_code: 'USD',
+            value,
+            breakdown: {
+              item_total: { currency_code: 'USD', value },
+            },
+          },
+          description: 'T-Shop Purchase',
+          custom_id: String(userId),
+          shipping: {
+            address: {
+              address_line_1: shipping_address.street || '',
+              admin_area_2: shipping_address.city || '',
+              admin_area_1: shipping_address.state || '',
+              postal_code: shipping_address.postal_code || '',
+              country_code: shipping_address.country || 'US',
+            },
+          },
+        },
+      ],
+      application_context: {
+        brand_name: 'T-Shop',
+        landing_page: 'LOGIN',
+        user_action: 'PAY_NOW',
+        return_url: `${hostOrigin}/payments/paypal/return?source=paypal`,
+        cancel_url: `${hostOrigin}/payments/paypal/cancel?source=paypal`,
+      },
+    };
+    // Data send to paypal.
+    console.log('📤 createRedirectUrl sending to PayPal:', JSON.stringify(payload, null, 2));
+    // Get PayPal access token & call API
+    const accessToken = await getAccessToken();
+    const url = `${PAYPAL_BASE.replace(/\/$/, '')}/v2/checkout/orders`;
+    // Send a request to create endpoint
+    const response = await axios.post(url, payload, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        'PayPal-Request-Id': `redirect-${userId}-${Date.now()}`,
+        Prefer: 'return=representation',
+      },
+      timeout: 15000,
+    });
+
+    const order = response.data;
+    console.log('✅ [PP][CREATE-REDIRECT] orderId=', order.id);
+
+    // Find approval link
+    const approvalLink = (order.links || []).find((l) => l.rel === 'approve')?.href;
+
+    if (!approvalLink) {
+      console.error('No approval link in PayPal response', order);
+      return handleResponse(res, 500, 'No approval URL returned by PayPal', { raw: order });
+    }
+
+    // Return approval URL to frontend
+    return handleResponse(res, 200, 'Redirect URL created', { approvalUrl: approvalLink, id: order.id, amount: totals.formatted });
+  } catch (error) {
+    console.error('❌ createRedirectUrl error:', error.response?.data ?? error.message ?? error);
+    if (error.response?.data) {
+      return handleResponse(res, error.response.status || 500, error.response.data.message || 'PayPal API error', { raw: error.response.data });
+    }
+    return handleResponse(res, 500, error.message || 'Failed to create redirect url');
+  }
+};
+
 module.exports = {
   createOrder,
   captureOrder,
   finalizeOrder,
   getOrderDetails,
+  createRedirectUrl,
 };

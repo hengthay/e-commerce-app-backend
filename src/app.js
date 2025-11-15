@@ -32,9 +32,6 @@ app.use(morgan('dev'));
 app.use("/images", express.static(path.join(__dirname, "../images")));
 console.log("Serving static files from:", path.join(__dirname, "../images"));
 
-// Handle errors globally
-app.use(errorHandler);
-
 // Routes API endpoints would be defined here
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
@@ -43,7 +40,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 
 // Paypal gateway
-app.use('/payments/', paypalRoutes);
+app.use('/payments', paypalRoutes);
 
 // Stripe gateway
 app.use('/payments', stripeRoutes);
@@ -55,6 +52,10 @@ app.get('/', authenticateToken, (req, res) => {
     user: req.user
   })
 })
+
+// Handle errors globally
+app.use(errorHandler);
+
 // Create necessary tables in PostgreSQL database
 // createUserTable();
 // createAddressesTable();
