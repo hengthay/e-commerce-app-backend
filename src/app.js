@@ -21,6 +21,7 @@ const paypalRoutes = require('./routes/paypalRoutes');
 const stripeRoutes = require('./routes/stripeRoutes');
 const errorHandler = require('./middlewares/errorHandling');
 const authenticateToken = require('./middlewares/authenticateToken');
+const verifyIdToken = require('./middlewares/authenticateGoogle');
 
 // Middleware and route setups would go here
 app.use(express.json());
@@ -33,11 +34,13 @@ app.use("/images", express.static(path.join(__dirname, "../images")));
 console.log("Serving static files from:", path.join(__dirname, "../images"));
 
 // Routes API endpoints would be defined here
+// Google Signin Auth Endpoint
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
+
 
 // Paypal gateway
 app.use('/payments', paypalRoutes);

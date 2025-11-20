@@ -1,6 +1,7 @@
-const { registerUserService, loginUserService, getAllUsersService } = require("../model/authModel");
+const { registerUserService, loginUserService, getAllUsersService, findOrCreateGoogleUserService } = require("../model/authModel");
 const jwt = require('jsonwebtoken');
 const handleResponse = require('../utils/handleResponse');
+const verifyIdToken = require("../middlewares/authenticateGoogle");
 // Handle API responses
 
 const getAllAuthUsers = async (req, res, next) => {
@@ -70,9 +71,53 @@ const loginUser = async (req, res, next) => {
   }
 };
 
+// Google signin 
+const findOrCreateGoogleUser = async (req, res, next) => {
+  try {
+    // client send idtoken from req.body
+    const { idToken } = req.body;
+    // console.log('Frontend idToken: ', idToken);
+     // Add validation
+    if (!idToken) {
+      return handleResponse(res, 400, 'idToken is missing');
+    }
+    // Verify token
+    const payload = await verifyIdToken(idToken);
+    console.log('Payload google', payload);
+    const { sub, email, name, picture } = payload;
+
+    // Find or create user
+    const user = await findOrCreateGoogleUserService(sub, email, name, picture);
+
+    if(!user) return handleResponse(res, 400, 'Google Login failed');
+
+    // Sign JWT Token
+    const token = jwt.sign({
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role
+      }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '1h' }
+    );
+
+    console.log('User Google: ' ,user);
+    return handleResponse(res, 200, 'Google Login successful', 
+      { user: user, 
+        token 
+      }
+    );
+  } catch (error) {
+    console.error('Google login error:', error);
+    return handleResponse(res, 500, 'Internal server error', { error: error.message }); 
+  }
+}
+
 module.exports = {
   handleResponse,
   getAllAuthUsers,
   registerUser,
-  loginUser
+  loginUser,
+  findOrCreateGoogleUser
 }
